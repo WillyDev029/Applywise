@@ -35,6 +35,10 @@ Applywise works locally by default. To enable accounts and cloud storage with Su
 
 After setup, each user sees only their own applications. The database policies in `supabase-schema.sql` provide that separation. Use only the public anon key in the browser; never add a Supabase service-role key to this project.
 
+### Local testing before Supabase setup
+
+If the Supabase placeholders are still in `supabase-config.js`, Applywise shows a local sign-up and sign-in screen so you can test the interface immediately. Local accounts and passwords are stored in that browser only and are not suitable for production. Configure Supabase before sharing the application with real users.
+
 ## How It Works
 
 ### For users

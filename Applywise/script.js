@@ -11,7 +11,7 @@ const cloudEnabled = Boolean(window.supabase && cloudConfig.url && cloudConfig.a
 const supabaseClient = cloudEnabled ? window.supabase.createClient(cloudConfig.url, cloudConfig.anonKey) : null;
 
 const state = {
-  applications: cloudEnabled ? [] : JSON.parse(localStorage.getItem("applywise-applications") || "null") || starterApplications,
+  applications: [],
   filter: "all",
   search: "",
   sort: "recent"
@@ -36,7 +36,14 @@ function initials(company) {
 }
 
 function saveApplications() {
-  localStorage.setItem("applywise-applications", JSON.stringify(state.applications));
+  const storageKey = currentUser ? `applywise-applications-${currentUser.email}` : "applywise-applications";
+  localStorage.setItem(storageKey, JSON.stringify(state.applications));
+}
+
+function loadLocalApplications(email) {
+  const saved = localStorage.getItem(`applywise-applications-${email}`);
+  state.applications = saved ? JSON.parse(saved) : starterApplications.map((application) => ({ ...application }));
+  saveApplications();
 }
 
 async function loadApplications() {
@@ -231,9 +238,10 @@ document.addEventListener("click", (event) => {
 
 function setupAuthentication() {
   if (!cloudEnabled) {
-    authScreen.hidden = true;
+    authScreen.hidden = false;
+    document.querySelector("#appShell").hidden = true;
     document.querySelector("#signOutButton").hidden = true;
-    render();
+    setupLocalAuthentication();
     return;
   }
 
@@ -265,6 +273,7 @@ function setupAuthentication() {
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     currentUser = session?.user || null;
     authScreen.hidden = Boolean(currentUser);
+    document.querySelector("#appShell").hidden = !currentUser;
     if (currentUser) {
       try { await loadApplications(); } catch (error) { window.alert(error.message); }
     }
@@ -272,8 +281,69 @@ function setupAuthentication() {
   supabaseClient.auth.getSession().then(({ data }) => {
     currentUser = data.session?.user || null;
     authScreen.hidden = Boolean(currentUser);
+    document.querySelector("#appShell").hidden = !currentUser;
     if (currentUser) loadApplications().catch((error) => window.alert(error.message));
   });
+}
+
+function setupLocalAuthentication() {
+  const authTitle = document.querySelector("#authTitle");
+  const authCopy = document.querySelector("#authCopy");
+  const authSubmit = document.querySelector("#authSubmit");
+  const authSwitch = document.querySelector("#authSwitch");
+  const appShell = document.querySelector("#appShell");
+  const users = JSON.parse(localStorage.getItem("applywise-users") || "{}");
+  let mode = "signin";
+
+  function setMode(nextMode) {
+    mode = nextMode;
+    authTitle.textContent = mode === "signin" ? "Welcome back." : "Create your account.";
+    authCopy.textContent = mode === "signin" ? "Sign in to keep your applications available on this device." : "Create a local account to start tracking applications.";
+    authSubmit.textContent = mode === "signin" ? "Sign in" : "Sign up";
+    authSwitch.textContent = mode === "signin" ? "Need an account? Sign up" : "Already have an account? Sign in";
+    authMessage.textContent = "";
+  }
+
+  authSwitch.addEventListener("click", () => setMode(mode === "signin" ? "signup" : "signin"));
+  authForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const credentials = new FormData(authForm);
+    const email = credentials.get("email").toLowerCase().trim();
+    const password = credentials.get("password");
+    if (password.length < 6) {
+      authMessage.textContent = "Password must be at least 6 characters.";
+      return;
+    }
+    if (mode === "signup" && users[email]) {
+      authMessage.textContent = "An account with this email already exists.";
+      return;
+    }
+    if (mode === "signin" && (!users[email] || users[email] !== password)) {
+      authMessage.textContent = "Email or password is incorrect.";
+      return;
+    }
+    if (mode === "signup") {
+      users[email] = password;
+      localStorage.setItem("applywise-users", JSON.stringify(users));
+    }
+    currentUser = { email };
+    loadLocalApplications(email);
+    authForm.reset();
+    authScreen.hidden = true;
+    appShell.hidden = false;
+    document.querySelector("#signOutButton").hidden = false;
+    render();
+  });
+
+  document.querySelector("#signOutButton").addEventListener("click", () => {
+    currentUser = null;
+    state.applications = [];
+    authScreen.hidden = false;
+    appShell.hidden = true;
+    document.querySelector("#signOutButton").hidden = true;
+    setMode("signin");
+  });
+  setMode("signin");
 }
 
 setupAuthentication();
