@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A calm, focused job application tracker.">
+  <title>Applywise | Job Application Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#top" aria-label="Applywise home">
+        <span class="brand-mark">A</span>
+        <span>applywise</span>
+      </a>
+      <p class="sidebar-label">Workspace</p>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a class="nav-item active" href="#applications"><span class="nav-icon">▦</span>Applications <span class="nav-count" id="navCount">0</span></a>
+        <a class="nav-item" href="#insights"><span class="nav-icon">◒</span>Insights</a>
+      </nav>
+      <div class="sidebar-note">
+        <span class="note-dot"></span>
+        <p><strong>Small steps,</strong><br>strong momentum.</p>
+      </div>
+      <div class="profile-chip">
+        <div class="avatar">JD</div>
+        <div><strong>Jordan Davis</strong><span>Job seeker</span></div>
+        <button class="icon-button" aria-label="Open profile menu">•••</button>
+      </div>
+    </aside>
+
+    <main class="main-content" id="top">
+      <header class="topbar">
+        <div class="breadcrumb"><span>Workspace</span><span class="slash">/</span><strong>Applications</strong></div>
+        <div class="top-actions">
+          <button class="icon-button notification-button" aria-label="Notifications"><span>♧</span><i></i></button>
+          <button class="avatar avatar-small" aria-label="Open your profile">JD</button>
+        </div>
+      </header>
+
+      <section class="page-intro" id="applications">
+        <div>
+          <p class="eyebrow">Thursday, September 3, 2026</p>
+          <h1>Keep moving<br><em>forward.</em></h1>
+          <p class="intro-copy">Your job search, organized and in motion.</p>
+        </div>
+        <button class="primary-button" id="openModal"><span>+</span> Add application</button>
+      </section>
+
+      <section class="stats-grid" aria-label="Application overview">
+        <article class="stat-card stat-card-main"><span class="stat-label">Total applications</span><strong id="totalCount">0</strong><span class="stat-meta positive" id="totalMeta">Ready when you are</span><div class="sparkline" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></article>
+        <article class="stat-card"><span class="stat-label">In progress</span><strong id="progressCount">0</strong><span class="stat-meta">Active opportunities</span><div class="mini-bar"><i id="progressBar"></i></div></article>
+        <article class="stat-card"><span class="stat-label">Interviews</span><strong id="interviewCount">0</strong><span class="stat-meta">Keep preparing</span><div class="mini-bar warm"><i id="interviewBar"></i></div></article>
+        <article class="stat-card"><span class="stat-label">Offers</span><strong id="offerCount">0</strong><span class="stat-meta">Great things ahead</span><div class="mini-bar green"><i id="offerBar"></i></div></article>
+      </section>
+
+      <section class="content-section" id="insights">
+        <div class="section-heading">
+          <div><p class="eyebrow">Your pipeline</p><h2>Applications <span id="visibleCount">0</span></h2></div>
+          <div class="view-toggle" role="group" aria-label="View options"><button class="view-button active" aria-label="List view">☷</button><button class="view-button" aria-label="Grid view">▦</button></div>
+        </div>
+        <div class="toolbar">
+          <label class="search-box"><span>⌕</span><input type="search" id="searchInput" placeholder="Search roles or companies" aria-label="Search applications"></label>
+          <div class="filter-group" role="group" aria-label="Filter applications">
+            <button class="filter-button active" data-filter="all">All <b id="allFilterCount">0</b></button>
+            <button class="filter-button" data-filter="Applied">Applied</button>
+            <button class="filter-button" data-filter="Interview">Interview</button>
+            <button class="filter-button" data-filter="Offer">Offer</button>
+          </div>
+          <select class="sort-select" id="sortSelect" aria-label="Sort applications"><option value="recent">Most recent</option><option value="company">Company A-Z</option><option value="status">By status</option></select>
+        </div>
+        <div class="application-table-wrap">
+          <table class="application-table"><thead><tr><th>Role & company</th><th>Status</th><th>Date applied</th><th>Next step</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="applicationRows"></tbody></table>
+          <div class="empty-state" id="emptyState" hidden><div class="empty-icon">✦</div><h3>No applications here yet</h3><p>Add your next opportunity and keep the momentum going.</p><button class="secondary-button" id="emptyAddButton">Add application</button></div>
+        </div>
+      </section>
+      <footer class="footer"><span>Applywise</span><span>Stay curious. Stay in motion.</span></footer>
+    </main>
+  </div>
+
+  <dialog class="application-modal" id="applicationModal">
+    <form method="dialog" id="applicationForm">
+      <div class="modal-heading"><div><p class="eyebrow">New opportunity</p><h2>Add application</h2></div><button class="close-button" value="cancel" aria-label="Close dialog">×</button></div>
+      <div class="form-grid">
+        <label>Company<input name="company" required placeholder="e.g. Arc Studio"></label>
+        <label>Role<input name="role" required placeholder="e.g. Product Designer"></label>
+        <label>Status<select name="status"><option>Applied</option><option>Interview</option><option>Offer</option><option>Rejected</option></select></label>
+        <label>Date applied<input name="date" type="date" required></label>
+        <label class="full-width">Next step<input name="nextStep" placeholder="e.g. Follow up with hiring manager"></label>
+      </div>
+      <div class="modal-actions"><button class="secondary-button" value="cancel">Cancel</button><button class="primary-button" value="default">Save application</button></div>
+    </form>
+  </dialog>
+</body>
+</html>
