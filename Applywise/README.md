@@ -35,6 +35,8 @@ Applywise works locally by default. To enable accounts and cloud storage with Su
 
 5. Open `index.html` and create an account.
 
+For password-reset links to work, add the URL where Applywise runs to **Authentication > URL Configuration > Redirect URLs** in Supabase. For Live Server this is usually `http://127.0.0.1:5500/Applywise/index.html`; use your real deployed website URL when the app is hosted online.
+
 After setup, each user sees only their own applications. The database policies in `supabase-schema.sql` provide that separation. Use only the public anon key in the browser; never add a Supabase service-role key to this project.
 
 ### Local testing before Supabase setup

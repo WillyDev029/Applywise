@@ -290,13 +290,23 @@ function setupAuthentication() {
     event.preventDefault();
     const credentials = new FormData(authForm);
     if (mode === "reset-confirm") {
+      if (credentials.get("password").length < 6) {
+        authMessage.textContent = "Password must be at least 6 characters.";
+        return;
+      }
       const { error } = await supabaseClient.auth.updateUser({ password: credentials.get("password") });
-      authMessage.textContent = error ? error.message : "Password updated. You can now sign in.";
-      if (!error) await supabaseClient.auth.signOut();
+      if (error) {
+        authMessage.textContent = error.message;
+        return;
+      }
+      await supabaseClient.auth.signOut();
+      setCloudMode("signin");
+      authMessage.textContent = "Password updated. You can now sign in.";
       return;
     }
     if (mode === "reset") {
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(credentials.get("email"), { redirectTo: window.location.href });
+      const redirectTo = window.location.href.split("#")[0];
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(credentials.get("email"), { redirectTo });
       authMessage.textContent = error ? error.message : "Check your email for a password reset link.";
       return;
     }
@@ -313,7 +323,7 @@ function setupAuthentication() {
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     currentUser = session?.user || null;
     updateProfile(currentUser);
-    const isRecovery = _event === "PASSWORD_RECOVERY";
+    const isRecovery = _event === "PASSWORD_RECOVERY" || window.location.hash.includes("type=recovery");
     if (isRecovery) setCloudMode("reset-confirm");
     authScreen.hidden = Boolean(currentUser) && !isRecovery;
     document.querySelector("#appShell").hidden = !currentUser || isRecovery;
@@ -324,8 +334,10 @@ function setupAuthentication() {
   supabaseClient.auth.getSession().then(({ data }) => {
     currentUser = data.session?.user || null;
     updateProfile(currentUser);
-    authScreen.hidden = Boolean(currentUser);
-    document.querySelector("#appShell").hidden = !currentUser;
+    const isRecovery = window.location.hash.includes("type=recovery");
+    if (isRecovery) setCloudMode("reset-confirm");
+    authScreen.hidden = Boolean(currentUser) && !isRecovery;
+    document.querySelector("#appShell").hidden = !currentUser || isRecovery;
     if (currentUser) loadApplications().catch((error) => window.alert(error.message));
   });
 }
