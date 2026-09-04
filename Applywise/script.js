@@ -17,6 +17,7 @@ const rows = document.querySelector("#applicationRows");
 const emptyState = document.querySelector("#emptyState");
 const modal = document.querySelector("#applicationModal");
 const form = document.querySelector("#applicationForm");
+let editingApplicationId = null;
 
 function formatDate(date) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", year: "numeric" }).format(new Date(`${date}T12:00:00`));
@@ -57,7 +58,7 @@ function renderRows() {
       <td><span class="status-pill ${statusClass(application.status)}">${application.status}</span></td>
       <td class="date-cell">${formatDate(application.date)}</td>
       <td class="next-step">${application.nextStep || "No next step added"}</td>
-      <td><button class="row-menu" data-delete="${application.id}" aria-label="Delete ${application.role} at ${application.company}">•••</button></td>
+      <td class="actions-cell"><button class="row-menu" aria-expanded="false" aria-label="Actions for ${application.role} at ${application.company}">•••</button><div class="row-actions"><button data-edit="${application.id}">Edit</button><button data-delete="${application.id}">Delete</button></div></td>
     </tr>`).join("");
   emptyState.hidden = visible.length > 0;
   document.querySelector("#visibleCount").textContent = visible.length;
@@ -103,28 +104,73 @@ document.querySelector("#sortSelect").addEventListener("change", (event) => {
   renderRows();
 });
 
-document.querySelector("#openModal").addEventListener("click", () => {
+function openApplicationModal(application = null) {
   form.reset();
-  form.elements.date.value = new Date().toISOString().slice(0, 10);
+  editingApplicationId = application ? application.id : null;
+  document.querySelector(".modal-heading h2").textContent = application ? "Edit application" : "Add application";
+  document.querySelector(".modal-heading .eyebrow").textContent = application ? "Update opportunity" : "New opportunity";
+  document.querySelector(".modal-actions .primary-button").textContent = application ? "Save changes" : "Save application";
+  if (application) {
+    form.elements.company.value = application.company;
+    form.elements.role.value = application.role;
+    form.elements.status.value = application.status;
+    form.elements.date.value = application.date;
+    form.elements.nextStep.value = application.nextStep || "";
+  } else {
+    form.elements.date.value = new Date().toISOString().slice(0, 10);
+  }
   modal.showModal();
-});
-document.querySelector("#emptyAddButton").addEventListener("click", () => document.querySelector("#openModal").click());
+}
+
+document.querySelector("#openModal").addEventListener("click", () => openApplicationModal());
+document.querySelector("#emptyAddButton").addEventListener("click", () => openApplicationModal());
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   const data = new FormData(form);
-  state.applications.push({ id: Date.now(), company: data.get("company"), role: data.get("role"), status: data.get("status"), date: data.get("date"), nextStep: data.get("nextStep") });
+  const updatedApplication = { company: data.get("company"), role: data.get("role"), status: data.get("status"), date: data.get("date"), nextStep: data.get("nextStep") };
+  if (editingApplicationId) {
+    state.applications = state.applications.map((application) => application.id === editingApplicationId ? { ...application, ...updatedApplication } : application);
+  } else {
+    state.applications.push({ id: Date.now(), ...updatedApplication });
+  }
   saveApplications();
   render();
   modal.close();
+  editingApplicationId = null;
+  document.querySelector(".modal-heading h2").textContent = "Add application";
+  document.querySelector(".modal-heading .eyebrow").textContent = "New opportunity";
+  document.querySelector(".modal-actions .primary-button").textContent = "Save application";
 });
 
 rows.addEventListener("click", (event) => {
+  const menuButton = event.target.closest(".row-menu");
+  if (menuButton) {
+    const menu = menuButton.nextElementSibling;
+    document.querySelectorAll(".row-actions.open").forEach((openMenu) => {
+      if (openMenu !== menu) openMenu.classList.remove("open");
+    });
+    menu.classList.toggle("open");
+    menuButton.setAttribute("aria-expanded", menu.classList.contains("open"));
+    return;
+  }
+  const editButton = event.target.closest("[data-edit]");
+  if (editButton) {
+    const application = state.applications.find((item) => item.id === Number(editButton.dataset.edit));
+    if (application) openApplicationModal(application);
+    return;
+  }
   const deleteButton = event.target.closest("[data-delete]");
   if (!deleteButton) return;
   state.applications = state.applications.filter((application) => application.id !== Number(deleteButton.dataset.delete));
   saveApplications();
   render();
+});
+
+document.addEventListener("click", (event) => {
+  if (event.target.closest(".actions-cell")) return;
+  document.querySelectorAll(".row-actions.open").forEach((menu) => menu.classList.remove("open"));
+  document.querySelectorAll(".row-menu[aria-expanded='true']").forEach((button) => button.setAttribute("aria-expanded", "false"));
 });
 
 render();
