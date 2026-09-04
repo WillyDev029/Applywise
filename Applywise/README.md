@@ -45,6 +45,8 @@ If the Supabase placeholders are still in `supabase-config.js`, Applywise shows 
 
 During sign-up, the user's full name is saved and shown in the dashboard profile area. The **Log out** button returns the user to the sign-in screen.
 
+New accounts start with an empty application list. The sample applications are used only when testing the app before an account is created.
+
 The **Forgot password?** link starts password recovery. With Supabase configured, the user receives a secure email reset link. In local testing mode, the account can be reset on the same device; this fallback is for testing only.
 
 ## How It Works

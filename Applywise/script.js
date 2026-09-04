@@ -57,9 +57,9 @@ function saveApplications() {
   localStorage.setItem(storageKey, JSON.stringify(state.applications));
 }
 
-function loadLocalApplications(email) {
+function loadLocalApplications(email, isNewAccount = false) {
   const saved = localStorage.getItem(`applywise-applications-${email}`);
-  state.applications = saved ? JSON.parse(saved) : starterApplications.map((application) => ({ ...application }));
+  state.applications = saved ? JSON.parse(saved) : isNewAccount ? [] : starterApplications.map((application) => ({ ...application }));
   saveApplications();
 }
 
@@ -416,9 +416,10 @@ function setupLocalAuthentication() {
       users[email] = { password, fullName };
       localStorage.setItem("applywise-users", JSON.stringify(users));
     }
+    const isNewAccount = mode === "signup";
     currentUser = { email, fullName: mode === "signup" ? fullName : storedUser.fullName };
     updateProfile(currentUser);
-    loadLocalApplications(email);
+    loadLocalApplications(email, isNewAccount);
     authForm.reset();
     authScreen.hidden = true;
     appShell.hidden = false;
