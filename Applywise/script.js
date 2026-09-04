@@ -27,6 +27,22 @@ const authMessage = document.querySelector("#authMessage");
 let currentUser = null;
 let editingApplicationId = null;
 
+function getUserName(user) {
+  return user?.fullName || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Job seeker";
+}
+
+function getInitials(name) {
+  return name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+}
+
+function updateProfile(user) {
+  const name = getUserName(user);
+  document.querySelector("#profileName").textContent = name;
+  document.querySelector("#profileRole").textContent = "Job seeker";
+  document.querySelector(".profile-chip .avatar").textContent = getInitials(name);
+  document.querySelector("#profileAvatar").textContent = getInitials(name);
+}
+
 function formatDate(date) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", year: "numeric" }).format(new Date(`${date}T12:00:00`));
 }
@@ -264,7 +280,9 @@ function setupAuthentication() {
     event.preventDefault();
     const credentials = new FormData(authForm);
     const method = mode === "signin" ? supabaseClient.auth.signInWithPassword.bind(supabaseClient.auth) : supabaseClient.auth.signUp.bind(supabaseClient.auth);
-    const { error } = await method({ email: credentials.get("email"), password: credentials.get("password") });
+    const authDetails = { email: credentials.get("email"), password: credentials.get("password") };
+    if (mode === "signup") authDetails.options = { data: { full_name: credentials.get("fullName") } };
+    const { error } = await method(authDetails);
     authMessage.textContent = error ? error.message : mode === "signup" ? "Check your email to confirm your account." : "";
   });
 
@@ -272,6 +290,7 @@ function setupAuthentication() {
   document.querySelector("#signOutButton").hidden = false;
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     currentUser = session?.user || null;
+    updateProfile(currentUser);
     authScreen.hidden = Boolean(currentUser);
     document.querySelector("#appShell").hidden = !currentUser;
     if (currentUser) {
@@ -280,6 +299,7 @@ function setupAuthentication() {
   });
   supabaseClient.auth.getSession().then(({ data }) => {
     currentUser = data.session?.user || null;
+    updateProfile(currentUser);
     authScreen.hidden = Boolean(currentUser);
     document.querySelector("#appShell").hidden = !currentUser;
     if (currentUser) loadApplications().catch((error) => window.alert(error.message));
@@ -291,12 +311,15 @@ function setupLocalAuthentication() {
   const authCopy = document.querySelector("#authCopy");
   const authSubmit = document.querySelector("#authSubmit");
   const authSwitch = document.querySelector("#authSwitch");
+  const fullNameField = document.querySelector("#fullNameField");
   const appShell = document.querySelector("#appShell");
   const users = JSON.parse(localStorage.getItem("applywise-users") || "{}");
   let mode = "signin";
 
   function setMode(nextMode) {
     mode = nextMode;
+    fullNameField.hidden = mode !== "signup";
+    fullNameField.querySelector("input").required = mode === "signup";
     authTitle.textContent = mode === "signin" ? "Welcome back." : "Create your account.";
     authCopy.textContent = mode === "signin" ? "Sign in to keep your applications available on this device." : "Create a local account to start tracking applications.";
     authSubmit.textContent = mode === "signin" ? "Sign in" : "Sign up";
@@ -308,6 +331,7 @@ function setupLocalAuthentication() {
   authForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const credentials = new FormData(authForm);
+    const fullName = credentials.get("fullName").trim();
     const email = credentials.get("email").toLowerCase().trim();
     const password = credentials.get("password");
     if (password.length < 6) {
@@ -318,15 +342,17 @@ function setupLocalAuthentication() {
       authMessage.textContent = "An account with this email already exists.";
       return;
     }
-    if (mode === "signin" && (!users[email] || users[email] !== password)) {
+    const storedUser = typeof users[email] === "string" ? { password: users[email], fullName: email.split("@")[0] } : users[email];
+    if (mode === "signin" && (!storedUser || storedUser.password !== password)) {
       authMessage.textContent = "Email or password is incorrect.";
       return;
     }
     if (mode === "signup") {
-      users[email] = password;
+      users[email] = { password, fullName };
       localStorage.setItem("applywise-users", JSON.stringify(users));
     }
-    currentUser = { email };
+    currentUser = { email, fullName: mode === "signup" ? fullName : storedUser.fullName };
+    updateProfile(currentUser);
     loadLocalApplications(email);
     authForm.reset();
     authScreen.hidden = true;

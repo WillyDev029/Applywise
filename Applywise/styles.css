@@ -42,6 +42,7 @@ button { cursor: pointer; }
 .avatar { display: grid; width: 32px; height: 32px; place-items: center; color: #fff; background: var(--orange); border: 0; border-radius: 50%; font: 500 10px "DM Mono", monospace; }
 .icon-button { border: 0; color: var(--muted); background: transparent; }
 .profile-chip .icon-button { margin-left: auto; font-size: 14px; }
+.logout-button { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 5px 7px; border: 1px solid var(--line); border-radius: 4px; color: var(--teal); background: #fff; font-size: 10px; font-weight: 700; }.logout-button:hover { color: #fff; background: var(--teal); }.logout-button span { font-size: 9px; }
 .main-content { width: min(100%, 1320px); padding: 0 54px 30px; margin: 0 auto; }
 .topbar { display: flex; align-items: center; justify-content: space-between; height: 80px; border-bottom: 1px solid var(--line); }
 .breadcrumb { display: flex; gap: 10px; color: var(--muted); font-size: 11px; }.breadcrumb strong { color: var(--ink); }.slash { color: #bac2bc; }
