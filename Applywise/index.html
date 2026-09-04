@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="A calm, focused job application tracker.">
   <title>Applywise | Job Application Tracker</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230e655f'/%3E%3Ctext x='16' y='23' font-family='monospace' font-size='19' font-weight='bold' fill='white' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -64,7 +65,7 @@
 
       <section class="page-intro" id="applications">
         <div>
-          <p class="eyebrow">Thursday, September 3, 2026</p>
+          <p class="eyebrow" id="todayHeading">Thursday, September 3, 2026</p>
           <h1>Keep moving<br><em>forward.</em></h1>
           <p class="intro-copy">Your job search, organized and in motion.</p>
         </div>
@@ -81,7 +82,7 @@
       <section class="content-section" id="insights">
         <div class="section-heading">
           <div><p class="eyebrow">Your pipeline</p><h2>Applications <span id="visibleCount">0</span></h2></div>
-          <div class="view-toggle" role="group" aria-label="View options"><button class="view-button active" aria-label="List view">☷</button><button class="view-button" aria-label="Grid view">▦</button></div>
+          <div class="view-toggle" role="group" aria-label="View options"><button class="view-button active" id="listViewButton" aria-label="Show applications as a list" aria-pressed="true" type="button">☷</button><button class="view-button" id="gridViewButton" aria-label="Show applications as cards" aria-pressed="false" type="button">▦</button></div>
         </div>
         <div class="toolbar">
           <label class="search-box"><span>⌕</span><input type="search" id="searchInput" placeholder="Search roles or companies" aria-label="Search applications"></label>
@@ -94,7 +95,8 @@
           <select class="sort-select" id="sortSelect" aria-label="Sort applications"><option value="recent">Most recent</option><option value="company">Company A-Z</option><option value="status">By status</option></select>
         </div>
         <div class="application-table-wrap">
-          <table class="application-table"><thead><tr><th>Role & company</th><th>Status</th><th>Date applied</th><th>Next step</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="applicationRows"></tbody></table>
+          <table class="application-table" id="applicationTable"><thead><tr><th>Role & company</th><th>Status</th><th>Date applied</th><th>Next step</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="applicationRows"></tbody></table>
+          <div class="application-grid" id="applicationGrid" hidden></div>
           <div class="empty-state" id="emptyState" hidden><div class="empty-icon">✦</div><h3>No applications here yet</h3><p>Add your next opportunity and keep the momentum going.</p><button class="secondary-button" id="emptyAddButton">Add application</button></div>
         </div>
       </section>
@@ -103,7 +105,7 @@
   </div>
 
   <dialog class="application-modal" id="applicationModal">
-    <form method="dialog" id="applicationForm">
+    <form id="applicationForm">
       <div class="modal-heading"><div><p class="eyebrow">New opportunity</p><h2>Add application</h2></div><button type="button" class="close-button" aria-label="Close dialog">×</button></div>
       <div class="form-grid">
         <label>Company<input name="company" required placeholder="e.g. Arc Studio"></label>
@@ -112,11 +114,11 @@
         <label>Date applied<input name="date" type="date" required></label>
         <label class="full-width">Next step<input name="nextStep" placeholder="e.g. Follow up with hiring manager"></label>
       </div>
-      <div class="modal-actions"><button class="secondary-button" value="cancel">Cancel</button><button class="primary-button" value="default">Save application</button></div>
+      <div class="modal-actions"><button class="secondary-button" id="cancelApplication" type="button">Cancel</button><button class="primary-button" type="submit">Save application</button></div>
     </form>
   </dialog>
   <dialog class="application-modal" id="profileModal">
-    <form method="dialog" id="profileForm">
+    <form id="profileForm">
       <div class="modal-heading"><div><p class="eyebrow">Your details</p><h2>Edit profile</h2></div><button type="button" class="close-button profile-close" aria-label="Close profile dialog">×</button></div>
       <div class="form-grid">
         <label>Full name<input name="fullName" required autocomplete="name" placeholder="Your full name"></label>
@@ -124,7 +126,7 @@
         <label>Location<input name="location" placeholder="e.g. Lagos, Nigeria"></label>
         <label class="full-width">Short bio<textarea name="bio" rows="4" placeholder="Tell us a little about yourself"></textarea></label>
       </div>
-      <div class="modal-actions"><button class="secondary-button profile-cancel" type="button">Cancel</button><button class="primary-button" value="default">Save profile</button></div>
+      <div class="modal-actions"><button class="secondary-button profile-cancel" type="button">Cancel</button><button class="primary-button" type="submit">Save profile</button></div>
       <div class="password-section"><p class="eyebrow">Security</p><h3>Change password</h3><div class="password-fields"><label>Current password<input type="password" id="currentPassword" autocomplete="current-password" placeholder="Current password"></label><label>New password<input type="password" id="newPassword" autocomplete="new-password" placeholder="At least 6 characters"></label></div><button class="secondary-button" type="button" id="changePasswordButton">Update password</button><p class="auth-message" id="profilePasswordMessage" role="status"></p></div>
     </form>
   </dialog>
