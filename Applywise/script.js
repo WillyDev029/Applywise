@@ -25,6 +25,8 @@ const authScreen = document.querySelector("#authScreen");
 const authForm = document.querySelector("#authForm");
 const authMessage = document.querySelector("#authMessage");
 const forgotPassword = document.querySelector("#forgotPassword");
+const profileModal = document.querySelector("#profileModal");
+const profileForm = document.querySelector("#profileForm");
 let currentUser = null;
 let editingApplicationId = null;
 
@@ -38,10 +40,42 @@ function getInitials(name) {
 
 function updateProfile(user) {
   const name = getUserName(user);
+  const title = user?.jobTitle || user?.user_metadata?.job_title || "Job seeker";
   document.querySelector("#profileName").textContent = name;
-  document.querySelector("#profileRole").textContent = "Job seeker";
+  document.querySelector("#profileRole").textContent = title;
   document.querySelector(".profile-chip .avatar").textContent = getInitials(name);
   document.querySelector("#profileAvatar").textContent = getInitials(name);
+}
+
+function openProfileEditor() {
+  const profile = currentUser || {};
+  profileForm.elements.fullName.value = getUserName(profile);
+  profileForm.elements.jobTitle.value = profile.jobTitle || profile.user_metadata?.job_title || "";
+  profileForm.elements.location.value = profile.location || profile.user_metadata?.location || "";
+  profileForm.elements.bio.value = profile.bio || profile.user_metadata?.bio || "";
+  profileModal.showModal();
+}
+
+async function saveProfile(event) {
+  event.preventDefault();
+  const data = new FormData(profileForm);
+  const profile = { fullName: data.get("fullName").trim(), jobTitle: data.get("jobTitle").trim(), location: data.get("location").trim(), bio: data.get("bio").trim() };
+  if (cloudEnabled && currentUser) {
+    const { data: updatedUser, error } = await supabaseClient.auth.updateUser({ data: { full_name: profile.fullName, job_title: profile.jobTitle, location: profile.location, bio: profile.bio } });
+    if (error) {
+      window.alert(error.message);
+      return;
+    }
+    currentUser = updatedUser.user;
+  } else if (currentUser) {
+    const users = JSON.parse(localStorage.getItem("applywise-users") || "{}");
+    const storedUser = typeof users[currentUser.email] === "string" ? { password: users[currentUser.email] } : users[currentUser.email] || {};
+    users[currentUser.email] = { ...storedUser, ...profile };
+    localStorage.setItem("applywise-users", JSON.stringify(users));
+    currentUser = { ...currentUser, ...profile };
+  }
+  updateProfile(currentUser);
+  profileModal.close();
 }
 
 function formatDate(date) {
@@ -253,6 +287,11 @@ document.addEventListener("click", (event) => {
   document.querySelectorAll(".row-menu[aria-expanded='true']").forEach((button) => button.setAttribute("aria-expanded", "false"));
 });
 
+document.querySelector("#profileAvatar").addEventListener("click", openProfileEditor);
+document.querySelector(".profile-close").addEventListener("click", () => profileModal.close());
+document.querySelector(".profile-cancel").addEventListener("click", () => profileModal.close());
+profileForm.addEventListener("submit", saveProfile);
+
 function setupAuthentication() {
   if (!cloudEnabled) {
     authScreen.hidden = false;
@@ -417,7 +456,7 @@ function setupLocalAuthentication() {
       localStorage.setItem("applywise-users", JSON.stringify(users));
     }
     const isNewAccount = mode === "signup";
-    currentUser = { email, fullName: mode === "signup" ? fullName : storedUser.fullName };
+    currentUser = { email, ...(mode === "signup" ? { fullName } : storedUser) };
     updateProfile(currentUser);
     loadLocalApplications(email, isNewAccount);
     authForm.reset();

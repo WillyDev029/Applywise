@@ -115,5 +115,17 @@
       <div class="modal-actions"><button class="secondary-button" value="cancel">Cancel</button><button class="primary-button" value="default">Save application</button></div>
     </form>
   </dialog>
+  <dialog class="application-modal" id="profileModal">
+    <form method="dialog" id="profileForm">
+      <div class="modal-heading"><div><p class="eyebrow">Your details</p><h2>Edit profile</h2></div><button type="button" class="close-button profile-close" aria-label="Close profile dialog">×</button></div>
+      <div class="form-grid">
+        <label>Full name<input name="fullName" required autocomplete="name" placeholder="Your full name"></label>
+        <label>Job title<input name="jobTitle" placeholder="e.g. Frontend Developer"></label>
+        <label>Location<input name="location" placeholder="e.g. Lagos, Nigeria"></label>
+        <label class="full-width">Short bio<textarea name="bio" rows="4" placeholder="Tell us a little about yourself"></textarea></label>
+      </div>
+      <div class="modal-actions"><button class="secondary-button profile-cancel" type="button">Cancel</button><button class="primary-button" value="default">Save profile</button></div>
+    </form>
+  </dialog>
 </body>
 </html>
