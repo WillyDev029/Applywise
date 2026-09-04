@@ -9,9 +9,26 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script src="script.js" defer></script>
 </head>
 <body>
+  <section class="auth-screen" id="authScreen" hidden>
+    <div class="auth-panel">
+      <a class="brand" href="#top"><span class="brand-mark">A</span><span>applywise</span></a>
+      <p class="eyebrow" id="authEyebrow">Your job search, organized</p>
+      <h1 id="authTitle">Welcome back.</h1>
+      <p class="auth-copy" id="authCopy">Sign in to keep your applications synced across your devices.</p>
+      <form id="authForm" class="auth-form">
+        <label>Email<input type="email" name="email" required autocomplete="email" placeholder="you@example.com"></label>
+        <label>Password<input type="password" name="password" required autocomplete="current-password" placeholder="At least 6 characters"></label>
+        <button class="primary-button" type="submit" id="authSubmit">Sign in</button>
+        <p class="auth-message" id="authMessage" role="status"></p>
+      </form>
+      <button class="auth-switch" type="button" id="authSwitch">Need an account? Sign up</button>
+    </div>
+  </section>
   <div class="app-shell">
     <aside class="sidebar">
       <a class="brand" href="#top" aria-label="Applywise home">
@@ -30,7 +47,7 @@
       <div class="profile-chip">
         <div class="avatar">JD</div>
         <div><strong>Jordan Davis</strong><span>Job seeker</span></div>
-        <button class="icon-button" aria-label="Open profile menu">•••</button>
+          <button class="icon-button" id="signOutButton" aria-label="Sign out" hidden>↪</button>
       </div>
     </aside>
 

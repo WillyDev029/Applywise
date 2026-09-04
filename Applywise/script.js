@@ -6,8 +6,12 @@ const starterApplications = [
   { id: 5, company: "Tandem Health", role: "UX Researcher", status: "Rejected", date: "2026-08-12", nextStep: "Keep the search going" }
 ];
 
+const cloudConfig = window.APPLYWISE_SUPABASE || {};
+const cloudEnabled = Boolean(window.supabase && cloudConfig.url && cloudConfig.anonKey && !cloudConfig.url.startsWith("YOUR_"));
+const supabaseClient = cloudEnabled ? window.supabase.createClient(cloudConfig.url, cloudConfig.anonKey) : null;
+
 const state = {
-  applications: JSON.parse(localStorage.getItem("applywise-applications") || "null") || starterApplications,
+  applications: cloudEnabled ? [] : JSON.parse(localStorage.getItem("applywise-applications") || "null") || starterApplications,
   filter: "all",
   search: "",
   sort: "recent"
@@ -17,6 +21,10 @@ const rows = document.querySelector("#applicationRows");
 const emptyState = document.querySelector("#emptyState");
 const modal = document.querySelector("#applicationModal");
 const form = document.querySelector("#applicationForm");
+const authScreen = document.querySelector("#authScreen");
+const authForm = document.querySelector("#authForm");
+const authMessage = document.querySelector("#authMessage");
+let currentUser = null;
 let editingApplicationId = null;
 
 function formatDate(date) {
@@ -29,6 +37,25 @@ function initials(company) {
 
 function saveApplications() {
   localStorage.setItem("applywise-applications", JSON.stringify(state.applications));
+}
+
+async function loadApplications() {
+  if (!cloudEnabled || !currentUser) {
+    render();
+    return;
+  }
+  const { data, error } = await supabaseClient.from("applications").select("*").order("date", { ascending: false });
+  if (error) throw error;
+  state.applications = (data || []).map((application) => ({ ...application, nextStep: application.next_step || "" }));
+  render();
+}
+
+function resetApplicationForm() {
+  editingApplicationId = null;
+  form.reset();
+  document.querySelector(".modal-heading h2").textContent = "Add application";
+  document.querySelector(".modal-heading .eyebrow").textContent = "New opportunity";
+  document.querySelector(".modal-actions .primary-button").textContent = "Save application";
 }
 
 function getVisibleApplications() {
@@ -124,18 +151,14 @@ function openApplicationModal(application = null) {
 
 function cancelApplicationForm() {
   modal.close();
-  editingApplicationId = null;
-  form.reset();
-  document.querySelector(".modal-heading h2").textContent = "Add application";
-  document.querySelector(".modal-heading .eyebrow").textContent = "New opportunity";
-  document.querySelector(".modal-actions .primary-button").textContent = "Save application";
+  resetApplicationForm();
 }
 
 document.querySelector("#openModal").addEventListener("click", () => openApplicationModal());
 document.querySelector("#emptyAddButton").addEventListener("click", () => openApplicationModal());
 document.querySelector(".close-button").addEventListener("click", cancelApplicationForm);
 
-form.addEventListener("submit", (event) => {
+form.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (event.submitter?.value === "cancel") {
     cancelApplicationForm();
@@ -143,18 +166,31 @@ form.addEventListener("submit", (event) => {
   }
   const data = new FormData(form);
   const updatedApplication = { company: data.get("company"), role: data.get("role"), status: data.get("status"), date: data.get("date"), nextStep: data.get("nextStep") };
-  if (editingApplicationId) {
-    state.applications = state.applications.map((application) => application.id === editingApplicationId ? { ...application, ...updatedApplication } : application);
+  if (cloudEnabled && currentUser) {
+    const cloudApplication = { company: updatedApplication.company, role: updatedApplication.role, status: updatedApplication.status, date: updatedApplication.date, next_step: updatedApplication.nextStep };
+    const result = editingApplicationId
+      ? await supabaseClient.from("applications").update(cloudApplication).eq("id", editingApplicationId).eq("user_id", currentUser.id).select().single()
+      : await supabaseClient.from("applications").insert({ ...cloudApplication, user_id: currentUser.id }).select().single();
+    if (result.error) {
+      window.alert(result.error.message);
+      return;
+    }
+    if (editingApplicationId) {
+      state.applications = state.applications.map((application) => application.id === editingApplicationId ? { ...result.data, nextStep: result.data.next_step || "" } : application);
+    } else {
+      state.applications.push({ ...result.data, nextStep: result.data.next_step || "" });
+    }
   } else {
-    state.applications.push({ id: Date.now(), ...updatedApplication });
+    if (editingApplicationId) {
+      state.applications = state.applications.map((application) => application.id === editingApplicationId ? { ...application, ...updatedApplication } : application);
+    } else {
+      state.applications.push({ id: Date.now(), ...updatedApplication });
+    }
+    saveApplications();
   }
-  saveApplications();
   render();
   modal.close();
-  editingApplicationId = null;
-  document.querySelector(".modal-heading h2").textContent = "Add application";
-  document.querySelector(".modal-heading .eyebrow").textContent = "New opportunity";
-  document.querySelector(".modal-actions .primary-button").textContent = "Save application";
+  resetApplicationForm();
 });
 
 rows.addEventListener("click", (event) => {
@@ -176,8 +212,14 @@ rows.addEventListener("click", (event) => {
   }
   const deleteButton = event.target.closest("[data-delete]");
   if (!deleteButton) return;
-  state.applications = state.applications.filter((application) => application.id !== Number(deleteButton.dataset.delete));
-  saveApplications();
+  const applicationId = Number(deleteButton.dataset.delete);
+  if (cloudEnabled && currentUser) {
+    supabaseClient.from("applications").delete().eq("id", applicationId).eq("user_id", currentUser.id).then(({ error }) => {
+      if (error) window.alert(error.message);
+    });
+  }
+  state.applications = state.applications.filter((application) => application.id !== applicationId);
+  if (!cloudEnabled) saveApplications();
   render();
 });
 
@@ -187,4 +229,51 @@ document.addEventListener("click", (event) => {
   document.querySelectorAll(".row-menu[aria-expanded='true']").forEach((button) => button.setAttribute("aria-expanded", "false"));
 });
 
-render();
+function setupAuthentication() {
+  if (!cloudEnabled) {
+    authScreen.hidden = true;
+    document.querySelector("#signOutButton").hidden = true;
+    render();
+    return;
+  }
+
+  const authTitle = document.querySelector("#authTitle");
+  const authCopy = document.querySelector("#authCopy");
+  const authSubmit = document.querySelector("#authSubmit");
+  const authSwitch = document.querySelector("#authSwitch");
+  let mode = "signin";
+
+  authSwitch.addEventListener("click", () => {
+    mode = mode === "signin" ? "signup" : "signin";
+    authTitle.textContent = mode === "signin" ? "Welcome back." : "Create your account.";
+    authCopy.textContent = mode === "signin" ? "Sign in to keep your applications synced across your devices." : "Create an account to access your applications anywhere.";
+    authSubmit.textContent = mode === "signin" ? "Sign in" : "Sign up";
+    authSwitch.textContent = mode === "signin" ? "Need an account? Sign up" : "Already have an account? Sign in";
+    authMessage.textContent = "";
+  });
+
+  authForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const credentials = new FormData(authForm);
+    const method = mode === "signin" ? supabaseClient.auth.signInWithPassword.bind(supabaseClient.auth) : supabaseClient.auth.signUp.bind(supabaseClient.auth);
+    const { error } = await method({ email: credentials.get("email"), password: credentials.get("password") });
+    authMessage.textContent = error ? error.message : mode === "signup" ? "Check your email to confirm your account." : "";
+  });
+
+  document.querySelector("#signOutButton").addEventListener("click", () => supabaseClient.auth.signOut());
+  document.querySelector("#signOutButton").hidden = false;
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    currentUser = session?.user || null;
+    authScreen.hidden = Boolean(currentUser);
+    if (currentUser) {
+      try { await loadApplications(); } catch (error) { window.alert(error.message); }
+    }
+  });
+  supabaseClient.auth.getSession().then(({ data }) => {
+    currentUser = data.session?.user || null;
+    authScreen.hidden = Boolean(currentUser);
+    if (currentUser) loadApplications().catch((error) => window.alert(error.message));
+  });
+}
+
+setupAuthentication();

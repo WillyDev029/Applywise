@@ -15,6 +15,26 @@ Applywise is a focused job application tracker built with HTML, CSS, and vanilla
 - Persist data in the browser with `localStorage`
 - Responsive layout for desktop and mobile screens
 
+## Optional Cloud Storage and Login
+
+Applywise works locally by default. To enable accounts and cloud storage with Supabase:
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Open the Supabase SQL Editor and run the contents of `supabase-schema.sql`.
+3. Open **Project Settings > API** in Supabase.
+4. Copy your project URL and public anon key into `supabase-config.js`:
+
+    ```javascript
+    window.APPLYWISE_SUPABASE = {
+       url: "https://your-project.supabase.co",
+       anonKey: "your-public-anon-key"
+    };
+    ```
+
+5. Open `index.html` and create an account.
+
+After setup, each user sees only their own applications. The database policies in `supabase-schema.sql` provide that separation. Use only the public anon key in the browser; never add a Supabase service-role key to this project.
+
 ## How It Works
 
 ### For users
@@ -56,6 +76,10 @@ Applywise/
 ├── index.html
 ├── script.js
 ├── styles.css
+├── supabase-config.js
+├── supabase-schema.sql
+├── assets/
+│   └── applywise-preview.svg
 └── README.md
 ```
 
