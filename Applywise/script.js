@@ -127,6 +127,15 @@ document.querySelector("#emptyAddButton").addEventListener("click", () => openAp
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
+  if (event.submitter?.value === "cancel") {
+    modal.close();
+    editingApplicationId = null;
+    form.reset();
+    document.querySelector(".modal-heading h2").textContent = "Add application";
+    document.querySelector(".modal-heading .eyebrow").textContent = "New opportunity";
+    document.querySelector(".modal-actions .primary-button").textContent = "Save application";
+    return;
+  }
   const data = new FormData(form);
   const updatedApplication = { company: data.get("company"), role: data.get("role"), status: data.get("status"), date: data.get("date"), nextStep: data.get("nextStep") };
   if (editingApplicationId) {
