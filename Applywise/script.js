@@ -122,18 +122,23 @@ function openApplicationModal(application = null) {
   modal.showModal();
 }
 
+function cancelApplicationForm() {
+  modal.close();
+  editingApplicationId = null;
+  form.reset();
+  document.querySelector(".modal-heading h2").textContent = "Add application";
+  document.querySelector(".modal-heading .eyebrow").textContent = "New opportunity";
+  document.querySelector(".modal-actions .primary-button").textContent = "Save application";
+}
+
 document.querySelector("#openModal").addEventListener("click", () => openApplicationModal());
 document.querySelector("#emptyAddButton").addEventListener("click", () => openApplicationModal());
+document.querySelector(".close-button").addEventListener("click", cancelApplicationForm);
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   if (event.submitter?.value === "cancel") {
-    modal.close();
-    editingApplicationId = null;
-    form.reset();
-    document.querySelector(".modal-heading h2").textContent = "Add application";
-    document.querySelector(".modal-heading .eyebrow").textContent = "New opportunity";
-    document.querySelector(".modal-actions .primary-button").textContent = "Save application";
+    cancelApplicationForm();
     return;
   }
   const data = new FormData(form);
