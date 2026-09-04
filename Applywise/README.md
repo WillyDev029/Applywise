@@ -2,6 +2,8 @@
 
 Applywise is a focused job application tracker built with HTML, CSS, and vanilla JavaScript. It helps you keep your search organized, visible, and moving forward.
 
+![Applywise dashboard preview](assets/applywise-preview.svg)
+
 ## Features
 
 - Add applications with company, role, status, date, and next step
