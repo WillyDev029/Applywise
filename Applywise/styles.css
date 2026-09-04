@@ -1,4 +1,5 @@
 .form-grid textarea { width: 100%; padding: 10px; resize: vertical; border: 1px solid var(--line); outline-color: var(--teal); color: var(--ink); background: #fff; font: 11px/1.5 "Manrope", sans-serif; text-transform: none; }
+.password-section { margin-top: 26px; padding-top: 23px; border-top: 1px solid var(--line); }.password-section h3 { margin: 8px 0 15px; font-size: 14px; }.password-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin-bottom: 15px; }.password-fields label { display: grid; gap: 7px; color: var(--muted); font: 500 10px "DM Mono", monospace; text-transform: uppercase; }.password-fields input { width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--line); outline-color: var(--teal); color: var(--ink); background: #fff; font: 11px "Manrope", sans-serif; text-transform: none; }.password-section .auth-message { min-height: 0; margin-top: 10px; }
 :root {
   --ink: #1e2924;
   --muted: #78817c;

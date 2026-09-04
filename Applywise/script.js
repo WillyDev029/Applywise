@@ -27,6 +27,8 @@ const authMessage = document.querySelector("#authMessage");
 const forgotPassword = document.querySelector("#forgotPassword");
 const profileModal = document.querySelector("#profileModal");
 const profileForm = document.querySelector("#profileForm");
+const changePasswordButton = document.querySelector("#changePasswordButton");
+const profilePasswordMessage = document.querySelector("#profilePasswordMessage");
 let currentUser = null;
 let editingApplicationId = null;
 
@@ -76,6 +78,34 @@ async function saveProfile(event) {
   }
   updateProfile(currentUser);
   profileModal.close();
+}
+
+async function changePassword() {
+  const currentPassword = document.querySelector("#currentPassword").value;
+  const newPassword = document.querySelector("#newPassword").value;
+  if (newPassword.length < 6) {
+    profilePasswordMessage.textContent = "New password must be at least 6 characters.";
+    return;
+  }
+  if (cloudEnabled && currentUser) {
+    const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+    if (error) {
+      profilePasswordMessage.textContent = error.message;
+      return;
+    }
+  } else if (currentUser) {
+    const users = JSON.parse(localStorage.getItem("applywise-users") || "{}");
+    const storedUser = typeof users[currentUser.email] === "string" ? { password: users[currentUser.email] } : users[currentUser.email];
+    if (!storedUser || storedUser.password !== currentPassword) {
+      profilePasswordMessage.textContent = "Current password is incorrect.";
+      return;
+    }
+    users[currentUser.email] = { ...storedUser, password: newPassword };
+    localStorage.setItem("applywise-users", JSON.stringify(users));
+  }
+  document.querySelector("#currentPassword").value = "";
+  document.querySelector("#newPassword").value = "";
+  profilePasswordMessage.textContent = "Password updated successfully.";
 }
 
 function formatDate(date) {
@@ -291,6 +321,7 @@ document.querySelector("#profileAvatar").addEventListener("click", openProfileEd
 document.querySelector(".profile-close").addEventListener("click", () => profileModal.close());
 document.querySelector(".profile-cancel").addEventListener("click", () => profileModal.close());
 profileForm.addEventListener("submit", saveProfile);
+changePasswordButton.addEventListener("click", changePassword);
 
 function setupAuthentication() {
   if (!cloudEnabled) {

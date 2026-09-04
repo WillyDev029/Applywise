@@ -17,6 +17,7 @@ Applywise is a focused job application tracker built with HTML, CSS, and vanilla
 - Sign-up with full name and sign-out support
 - Forgotten-password recovery
 - Editable user profile with name, job title, location, and bio
+- Change password from the signed-in profile
 
 ## Optional Cloud Storage and Login
 
@@ -51,6 +52,8 @@ New accounts start with an empty application list. The sample applications are u
 The **Forgot password?** link starts password recovery. With Supabase configured, the user receives a secure email reset link. In local testing mode, the account can be reset on the same device; this fallback is for testing only.
 
 After signing in, users can select their profile avatar to add or update their full name, job title, location, and short bio. Profile details are stored with the account in Supabase or per-account in local testing mode.
+
+The profile's **Security** section also allows authenticated users to change their password. Local testing mode checks the current password; Supabase mode updates the authenticated account securely.
 
 ## How It Works
 
