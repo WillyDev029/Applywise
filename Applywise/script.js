@@ -24,6 +24,7 @@ const form = document.querySelector("#applicationForm");
 const authScreen = document.querySelector("#authScreen");
 const authForm = document.querySelector("#authForm");
 const authMessage = document.querySelector("#authMessage");
+const forgotPassword = document.querySelector("#forgotPassword");
 let currentUser = null;
 let editingApplicationId = null;
 
@@ -265,34 +266,57 @@ function setupAuthentication() {
   const authCopy = document.querySelector("#authCopy");
   const authSubmit = document.querySelector("#authSubmit");
   const authSwitch = document.querySelector("#authSwitch");
+  const passwordField = document.querySelector("#passwordField");
   let mode = "signin";
 
-  authSwitch.addEventListener("click", () => {
-    mode = mode === "signin" ? "signup" : "signin";
-    authTitle.textContent = mode === "signin" ? "Welcome back." : "Create your account.";
-    authCopy.textContent = mode === "signin" ? "Sign in to keep your applications synced across your devices." : "Create an account to access your applications anywhere.";
-    authSubmit.textContent = mode === "signin" ? "Sign in" : "Sign up";
-    authSwitch.textContent = mode === "signin" ? "Need an account? Sign up" : "Already have an account? Sign in";
+  function setCloudMode(nextMode) {
+    mode = nextMode;
+    document.querySelector("#fullNameField").hidden = mode !== "signup";
+    document.querySelector("#fullNameField input").required = mode === "signup";
+    passwordField.hidden = mode === "reset";
+    passwordField.querySelector("input").required = mode !== "reset";
+    authTitle.textContent = mode === "signup" ? "Create your account." : mode === "reset" ? "Reset your password." : mode === "reset-confirm" ? "Choose a new password." : "Welcome back.";
+    authCopy.textContent = mode === "signup" ? "Create an account to access your applications anywhere." : mode === "reset" ? "Enter your email and we will send you a password reset link." : mode === "reset-confirm" ? "Choose a new password for your account." : "Sign in to keep your applications synced across your devices.";
+    authSubmit.textContent = mode === "signup" ? "Sign up" : mode === "reset" ? "Send reset link" : mode === "reset-confirm" ? "Save new password" : "Sign in";
+    authSwitch.textContent = mode === "signin" ? "Need an account? Sign up" : "Back to sign in";
+    forgotPassword.hidden = mode !== "signin";
     authMessage.textContent = "";
-  });
+  }
+
+  authSwitch.addEventListener("click", () => setCloudMode(mode === "signin" ? "signup" : "signin"));
+  forgotPassword.addEventListener("click", () => setCloudMode("reset"));
 
   authForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const credentials = new FormData(authForm);
+    if (mode === "reset-confirm") {
+      const { error } = await supabaseClient.auth.updateUser({ password: credentials.get("password") });
+      authMessage.textContent = error ? error.message : "Password updated. You can now sign in.";
+      if (!error) await supabaseClient.auth.signOut();
+      return;
+    }
+    if (mode === "reset") {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(credentials.get("email"), { redirectTo: window.location.href });
+      authMessage.textContent = error ? error.message : "Check your email for a password reset link.";
+      return;
+    }
     const method = mode === "signin" ? supabaseClient.auth.signInWithPassword.bind(supabaseClient.auth) : supabaseClient.auth.signUp.bind(supabaseClient.auth);
     const authDetails = { email: credentials.get("email"), password: credentials.get("password") };
     if (mode === "signup") authDetails.options = { data: { full_name: credentials.get("fullName") } };
     const { error } = await method(authDetails);
     authMessage.textContent = error ? error.message : mode === "signup" ? "Check your email to confirm your account." : "";
   });
+  setCloudMode("signin");
 
   document.querySelector("#signOutButton").addEventListener("click", () => supabaseClient.auth.signOut());
   document.querySelector("#signOutButton").hidden = false;
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     currentUser = session?.user || null;
     updateProfile(currentUser);
-    authScreen.hidden = Boolean(currentUser);
-    document.querySelector("#appShell").hidden = !currentUser;
+    const isRecovery = _event === "PASSWORD_RECOVERY";
+    if (isRecovery) setCloudMode("reset-confirm");
+    authScreen.hidden = Boolean(currentUser) && !isRecovery;
+    document.querySelector("#appShell").hidden = !currentUser || isRecovery;
     if (currentUser) {
       try { await loadApplications(); } catch (error) { window.alert(error.message); }
     }
@@ -311,6 +335,8 @@ function setupLocalAuthentication() {
   const authCopy = document.querySelector("#authCopy");
   const authSubmit = document.querySelector("#authSubmit");
   const authSwitch = document.querySelector("#authSwitch");
+  const forgotPassword = document.querySelector("#forgotPassword");
+  const passwordField = document.querySelector("#passwordField");
   const fullNameField = document.querySelector("#fullNameField");
   const appShell = document.querySelector("#appShell");
   const users = JSON.parse(localStorage.getItem("applywise-users") || "{}");
@@ -320,20 +346,47 @@ function setupLocalAuthentication() {
     mode = nextMode;
     fullNameField.hidden = mode !== "signup";
     fullNameField.querySelector("input").required = mode === "signup";
-    authTitle.textContent = mode === "signin" ? "Welcome back." : "Create your account.";
-    authCopy.textContent = mode === "signin" ? "Sign in to keep your applications available on this device." : "Create a local account to start tracking applications.";
-    authSubmit.textContent = mode === "signin" ? "Sign in" : "Sign up";
-    authSwitch.textContent = mode === "signin" ? "Need an account? Sign up" : "Already have an account? Sign in";
+    passwordField.hidden = mode === "reset";
+    passwordField.querySelector("input").required = mode !== "reset";
+    authTitle.textContent = mode === "signin" ? "Welcome back." : mode === "reset" ? "Reset your password." : mode === "reset-confirm" ? "Choose a new password." : "Create your account.";
+    authCopy.textContent = mode === "signin" ? "Sign in to keep your applications available on this device." : mode === "reset" ? "Enter your email to reset your local password." : mode === "reset-confirm" ? "Choose a new password for this local account." : "Create a local account to start tracking applications.";
+    authSubmit.textContent = mode === "signin" ? "Sign in" : mode === "reset" ? "Find account" : mode === "reset-confirm" ? "Save new password" : "Sign up";
+    authSwitch.textContent = mode === "signin" ? "Need an account? Sign up" : "Back to sign in";
+    forgotPassword.hidden = mode !== "signin";
     authMessage.textContent = "";
   }
 
   authSwitch.addEventListener("click", () => setMode(mode === "signin" ? "signup" : "signin"));
+  forgotPassword.addEventListener("click", () => setMode("reset"));
   authForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const credentials = new FormData(authForm);
     const fullName = credentials.get("fullName").trim();
     const email = credentials.get("email").toLowerCase().trim();
     const password = credentials.get("password");
+    if (mode === "reset") {
+      const storedUser = users[email];
+      if (!storedUser) {
+        authMessage.textContent = "No local account was found for this email.";
+        return;
+      }
+      setMode("reset-confirm");
+      authMessage.textContent = "Enter your new password to reset this local account.";
+      return;
+    }
+    if (mode === "reset-confirm") {
+      if (password.length < 6) {
+        authMessage.textContent = "Password must be at least 6 characters.";
+        return;
+      }
+      const storedUser = typeof users[email] === "string" ? { password: users[email], fullName: email.split("@")[0] } : users[email];
+      users[email] = { ...storedUser, password };
+      localStorage.setItem("applywise-users", JSON.stringify(users));
+      authMessage.textContent = "Password updated. You can now sign in.";
+      setMode("signin");
+      authForm.reset();
+      return;
+    }
     if (password.length < 6) {
       authMessage.textContent = "Password must be at least 6 characters.";
       return;

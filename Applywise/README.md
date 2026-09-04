@@ -15,6 +15,7 @@ Applywise is a focused job application tracker built with HTML, CSS, and vanilla
 - Persist data in the browser with `localStorage`
 - Responsive layout for desktop and mobile screens
 - Sign-up with full name and sign-out support
+- Forgotten-password recovery
 
 ## Optional Cloud Storage and Login
 
@@ -41,6 +42,8 @@ After setup, each user sees only their own applications. The database policies i
 If the Supabase placeholders are still in `supabase-config.js`, Applywise shows a local sign-up and sign-in screen so you can test the interface immediately. Local accounts and passwords are stored in that browser only and are not suitable for production. Configure Supabase before sharing the application with real users.
 
 During sign-up, the user's full name is saved and shown in the dashboard profile area. The **Log out** button returns the user to the sign-in screen.
+
+The **Forgot password?** link starts password recovery. With Supabase configured, the user receives a secure email reset link. In local testing mode, the account can be reset on the same device; this fallback is for testing only.
 
 ## How It Works
 

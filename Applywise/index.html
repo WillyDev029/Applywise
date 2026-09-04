@@ -23,10 +23,11 @@
       <form id="authForm" class="auth-form">
         <label id="fullNameField" hidden>Full name<input type="text" name="fullName" autocomplete="name" placeholder="Your full name"></label>
         <label>Email<input type="email" name="email" required autocomplete="email" placeholder="you@example.com"></label>
-        <label>Password<input type="password" name="password" required autocomplete="current-password" placeholder="At least 6 characters"></label>
+        <label id="passwordField">Password<input type="password" name="password" required autocomplete="current-password" placeholder="At least 6 characters"></label>
         <button class="primary-button" type="submit" id="authSubmit">Sign in</button>
         <p class="auth-message" id="authMessage" role="status"></p>
       </form>
+      <button class="auth-switch" type="button" id="forgotPassword">Forgot password?</button>
       <button class="auth-switch" type="button" id="authSwitch">Need an account? Sign up</button>
     </div>
   </section>
