@@ -7,17 +7,20 @@ Applywise is a focused job application tracker built with HTML, CSS, and vanilla
 ## Features
 
 - Add applications with company, role, status, date, and next step
-- Search roles and companies
+- Track salary, job URL, interview date, and free-form notes per application
+- Search roles, companies, and notes
 - Filter applications by status
 - Sort by date, company, or status
 - View pipeline totals for applications, active opportunities, interviews, and offers
 - Delete applications
+- Export applications to JSON and import them back (works across devices)
 - Persist data in the browser with `localStorage`
 - Responsive layout for desktop and mobile screens
 - Sign-up with full name and sign-out support
 - Forgotten-password recovery
 - Editable user profile with name, job title, location, and bio
 - Change password from the signed-in profile
+- Local accounts store only salted SHA-256 password hashes (never plaintext)
 
 ## Optional Cloud Storage and Login
 
@@ -44,6 +47,14 @@ After setup, each user sees only their own applications. The database policies i
 ### Local testing before Supabase setup
 
 If the Supabase placeholders are still in `supabase-config.js`, Applywise shows a local sign-up and sign-in screen so you can test the interface immediately. Local accounts and passwords are stored in that browser only and are not suitable for production. Configure Supabase before sharing the application with real users.
+
+### Export and import
+
+Use **Export** in the toolbar to download all applications as a JSON file. Use **Import** to load them back — useful for backups or moving data between browsers and devices. In cloud mode, imported rows are inserted into Supabase; in local mode they are merged into `localStorage`. Invalid rows are skipped and a summary is shown.
+
+### Local password security
+
+Local (non-Supabase) accounts never store plaintext passwords. Each account holds a random 16-byte salt and a SHA-256 hash computed with the Web Crypto API. Accounts created before this change are upgraded automatically the next time you sign in. For production use, prefer the Supabase mode, where authentication and password storage are handled server-side with bcrypt.
 
 During sign-up, the user's full name is saved and shown in the dashboard profile area. The **Log out** button returns the user to the sign-in screen.
 

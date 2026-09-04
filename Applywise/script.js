@@ -1,11 +1,11 @@
 'use strict';
 
 const starterApplications = [
-  { id: 1, company: "Northstar Labs", role: "Product Designer", status: "Interview", date: "2026-08-29", nextStep: "Portfolio review · Sep 06" },
-  { id: 2, company: "Lumen & Co.", role: "Senior UX Designer", status: "Applied", date: "2026-08-26", nextStep: "Follow up next week" },
-  { id: 3, company: "Fieldwork", role: "Design Lead", status: "Offer", date: "2026-08-21", nextStep: "Review offer · Sep 05" },
-  { id: 4, company: "Marble Studio", role: "Product Designer", status: "Applied", date: "2026-08-18", nextStep: "Awaiting response" },
-  { id: 5, company: "Tandem Health", role: "UX Researcher", status: "Rejected", date: "2026-08-12", nextStep: "Keep the search going" }
+  { id: 1, company: "Northstar Labs", role: "Product Designer", status: "Interview", date: "2026-08-29", nextStep: "Portfolio review · Sep 06", salary: "", jobUrl: "", interviewDate: "", notes: "" },
+  { id: 2, company: "Lumen & Co.", role: "Senior UX Designer", status: "Applied", date: "2026-08-26", nextStep: "Follow up next week", salary: "", jobUrl: "", interviewDate: "", notes: "" },
+  { id: 3, company: "Fieldwork", role: "Design Lead", status: "Offer", date: "2026-08-21", nextStep: "Review offer · Sep 05", salary: "", jobUrl: "", interviewDate: "", notes: "" },
+  { id: 4, company: "Marble Studio", role: "Product Designer", status: "Applied", date: "2026-08-18", nextStep: "Awaiting response", salary: "", jobUrl: "", interviewDate: "", notes: "" },
+  { id: 5, company: "Tandem Health", role: "UX Researcher", status: "Rejected", date: "2026-08-12", nextStep: "Keep the search going", salary: "", jobUrl: "", interviewDate: "", notes: "" }
 ];
 
 const cloudConfig = window.APPLYWISE_SUPABASE || {};
@@ -75,6 +75,54 @@ function updateProfile(user) {
 }
 
 /* ---------------------------------------------------------
+   Password security (local mode)
+   Passwords are never stored in plaintext: each account gets
+   a random 16-byte salt and the password is hashed with
+   SHA-256 via the Web Crypto API. Legacy plaintext records
+   are transparently upgraded on the next successful sign-in.
+--------------------------------------------------------- */
+const MIN_PASSWORD_LENGTH = 8;
+
+function passwordProblem(password) {
+  if (!password || password.length < MIN_PASSWORD_LENGTH) {
+    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+  }
+  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+    return "Password must contain both letters and numbers.";
+  }
+  return null;
+}
+
+function toHex(buffer) {
+  return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function hashPassword(password, saltHex) {
+  const data = new TextEncoder().encode(`${saltHex}:${password}`);
+  return toHex(await crypto.subtle.digest("SHA-256", data));
+}
+
+function randomSalt() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return toHex(bytes);
+}
+
+async function makePasswordRecord(password) {
+  const salt = randomSalt();
+  return { salt, hash: await hashPassword(password, salt) };
+}
+
+async function verifyPassword(password, record) {
+  if (!record || !record.salt || !record.hash) return false;
+  const candidate = await hashPassword(password, record.salt);
+  if (candidate.length !== record.hash.length) return false;
+  let diff = 0;
+  for (let i = 0; i < candidate.length; i++) diff |= candidate.charCodeAt(i) ^ record.hash.charCodeAt(i);
+  return diff === 0;
+}
+
+/* ---------------------------------------------------------
    Local (per-account) storage helpers
    Always read fresh from localStorage so mutations made by
    other call sites (profile, password, reset) are respected.
@@ -92,7 +140,10 @@ function saveLocalUsers(users) {
 }
 
 function normalizeStoredUser(storedUser, email) {
-  if (typeof storedUser === "string") return { password: storedUser, fullName: email.split("@")[0] };
+  if (typeof storedUser === "string") {
+    // Legacy plaintext record: kept compatible until next sign-in migrates it.
+    return { legacyPassword: storedUser, fullName: email.split("@")[0] };
+  }
   return storedUser || {};
 }
 
@@ -121,6 +172,35 @@ function loadLocalApplications(email, isNewAccount = false) {
   saveApplications();
 }
 
+function cloudToLocal(application) {
+  return {
+    id: application.id,
+    company: application.company,
+    role: application.role,
+    status: application.status,
+    date: application.date,
+    nextStep: application.next_step || "",
+    salary: application.salary || "",
+    jobUrl: application.job_url || "",
+    interviewDate: application.interview_date || "",
+    notes: application.notes || ""
+  };
+}
+
+function localToCloud(application) {
+  return {
+    company: application.company,
+    role: application.role,
+    status: application.status,
+    date: application.date,
+    next_step: application.nextStep || "",
+    salary: application.salary || "",
+    job_url: application.jobUrl || "",
+    interview_date: application.interviewDate || null,
+    notes: application.notes || ""
+  };
+}
+
 async function loadApplications() {
   if (!cloudEnabled || !currentUser) {
     render();
@@ -128,7 +208,7 @@ async function loadApplications() {
   }
   const { data, error } = await supabaseClient.from("applications").select("*").order("date", { ascending: false });
   if (error) throw error;
-  state.applications = (data || []).map((application) => ({ ...application, nextStep: application.next_step || "" }));
+  state.applications = (data || []).map(cloudToLocal);
   render();
 }
 
@@ -136,6 +216,7 @@ async function loadApplications() {
    Date / formatting helpers
 --------------------------------------------------------- */
 function formatDate(date) {
+  if (!date) return "—";
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", year: "numeric" })
     .format(new Date(`${date}T12:00:00`));
 }
@@ -148,7 +229,8 @@ function getVisibleApplications() {
   const searchTerm = state.search.toLowerCase().trim();
   const visible = state.applications.filter((application) => {
     const matchesFilter = state.filter === "all" || application.status === state.filter;
-    const matchesSearch = !searchTerm || `${application.company} ${application.role}`.toLowerCase().includes(searchTerm);
+    const haystack = `${application.company} ${application.role} ${application.notes || ""}`.toLowerCase();
+    const matchesSearch = !searchTerm || haystack.includes(searchTerm);
     return matchesFilter && matchesSearch;
   });
 
@@ -178,32 +260,48 @@ function renderRows() {
   const visibleCount = document.querySelector("#visibleCount");
 
   if (rows) {
-    rows.innerHTML = visible.map((application) => `
+    rows.innerHTML = visible.map((application) => {
+      const extras = [];
+      if (application.salary) extras.push(`<span class="extra-chip" title="Salary">${escapeHTML(application.salary)}</span>`);
+      if (application.interviewDate) extras.push(`<span class="extra-chip warm" title="Interview date">Interview · ${escapeHTML(formatDate(application.interviewDate))}</span>`);
+      const url = application.jobUrl
+        ? ` <a class="job-link" href="${escapeHTML(application.jobUrl)}" target="_blank" rel="noreferrer" aria-label="Open job posting for ${escapeHTML(application.role)}">↗</a>`
+        : "";
+      return `
       <tr>
-        <td><div class="role-cell"><span class="company-logo">${escapeHTML(initials(application.company))}</span><span class="role-name"><strong>${escapeHTML(application.role)}</strong><span>${escapeHTML(application.company)}</span></span></div></td>
+        <td><div class="role-cell"><span class="company-logo">${escapeHTML(initials(application.company))}</span><span class="role-name"><strong>${escapeHTML(application.role)}${url}</strong><span>${escapeHTML(application.company)}</span></span></div></td>
         <td><span class="status-pill ${escapeHTML(statusClass(application.status))}">${escapeHTML(application.status)}</span></td>
         <td class="date-cell">${escapeHTML(formatDate(application.date))}</td>
-        <td class="next-step">${escapeHTML(application.nextStep) || "No next step added"}</td>
+        <td class="next-step">${escapeHTML(application.nextStep) || "No next step added"}${extras.length ? `<div class="extra-row">${extras.join("")}</div>` : ""}</td>
         <td class="actions-cell">${rowActionsMarkup(application)}</td>
-      </tr>`).join("");
+      </tr>`;
+    }).join("");
   }
 
   if (grid) {
-    grid.innerHTML = visible.map((application) => `
+    grid.innerHTML = visible.map((application) => {
+      const url = application.jobUrl
+        ? ` <a class="job-link" href="${escapeHTML(application.jobUrl)}" target="_blank" rel="noreferrer" aria-label="Open job posting">↗</a>`
+        : "";
+      return `
       <article class="app-card">
         <div class="app-card-head">
           <span class="company-logo">${escapeHTML(initials(application.company))}</span>
-          <span class="role-name"><strong>${escapeHTML(application.role)}</strong><span>${escapeHTML(application.company)}</span></span>
+          <span class="role-name"><strong>${escapeHTML(application.role)}${url}</strong><span>${escapeHTML(application.company)}</span></span>
         </div>
         <div>
           <span class="status-pill ${escapeHTML(statusClass(application.status))}">${escapeHTML(application.status)}</span>
         </div>
         <div class="app-card-meta">
           <div><span>Date applied</span><span>${escapeHTML(formatDate(application.date))}</span></div>
+          ${application.salary ? `<div><span>Salary</span><span>${escapeHTML(application.salary)}</span></div>` : ""}
+          ${application.interviewDate ? `<div><span>Interview</span><span>${escapeHTML(formatDate(application.interviewDate))}</span></div>` : ""}
           <div><span>Next step</span><span class="next-step">${escapeHTML(application.nextStep) || "No next step added"}</span></div>
         </div>
+        ${application.notes ? `<p class="app-card-notes">${escapeHTML(application.notes)}</p>` : ""}
         <div class="actions-cell">${rowActionsMarkup(application)}</div>
-      </article>`).join("");
+      </article>`;
+    }).join("");
   }
 
   emptyState.hidden = visible.length > 0;
@@ -278,6 +376,85 @@ document.querySelector("#sortSelect")?.addEventListener("change", (event) => {
 });
 
 /* ---------------------------------------------------------
+   Export / import
+--------------------------------------------------------- */
+function exportApplications() {
+  const payload = {
+    app: "applywise",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    applications: state.applications
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `applywise-applications-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function normalizeImportedApplication(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const company = String(raw.company || "").trim();
+  const role = String(raw.role || "").trim();
+  const date = String(raw.date || "").trim();
+  if (!company || !role || !date) return null;
+  const status = ["Applied", "Interview", "Offer", "Rejected"].includes(raw.status) ? raw.status : "Applied";
+  return {
+    id: Date.now() + Math.floor(Math.random() * 100000),
+    company,
+    role,
+    status,
+    date,
+    nextStep: String(raw.nextStep || raw.next_step || "").trim(),
+    salary: String(raw.salary || "").trim(),
+    jobUrl: String(raw.jobUrl || raw.job_url || "").trim(),
+    interviewDate: String(raw.interviewDate || raw.interview_date || "").trim(),
+    notes: String(raw.notes || "").trim()
+  };
+}
+
+function importApplications(file) {
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const parsed = JSON.parse(String(reader.result));
+      const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed.applications) ? parsed.applications : null;
+      if (!list) throw new Error("File does not contain an applications list.");
+      const imported = list.map(normalizeImportedApplication).filter(Boolean);
+      if (!imported.length) throw new Error("No valid applications were found in the file.");
+
+      if (cloudEnabled && currentUser) {
+        const cloudRows = imported.map((application) => ({ ...localToCloud(application), user_id: currentUser.id }));
+        const { error } = await supabaseClient.from("applications").insert(cloudRows);
+        if (error) throw new Error(error.message);
+        await loadApplications();
+      } else {
+        state.applications = state.applications.concat(imported);
+        saveApplications();
+        render();
+      }
+      window.alert(`Imported ${imported.length} application${imported.length === 1 ? "" : "s"}.`);
+    } catch (error) {
+      window.alert(`Import failed: ${error.message}`);
+    }
+  };
+  reader.onerror = () => window.alert("Import failed: the file could not be read.");
+  reader.readAsText(file);
+}
+
+document.querySelector("#exportButton")?.addEventListener("click", exportApplications);
+document.querySelector("#importButton")?.addEventListener("click", () => document.querySelector("#importFile").click());
+document.querySelector("#importFile")?.addEventListener("change", (event) => {
+  const file = event.target.files?.[0];
+  if (file) importApplications(file);
+  event.target.value = "";
+});
+
+/* ---------------------------------------------------------
    Application modal (add / edit / cancel)
 --------------------------------------------------------- */
 function resetApplicationForm() {
@@ -299,7 +476,11 @@ function openApplicationModal(application = null) {
     form.elements.role.value = application.role;
     form.elements.status.value = application.status;
     form.elements.date.value = application.date;
+    form.elements.salary.value = application.salary || "";
+    form.elements.jobUrl.value = application.jobUrl || "";
+    form.elements.interviewDate.value = application.interviewDate || "";
     form.elements.nextStep.value = application.nextStep || "";
+    form.elements.notes.value = application.notes || "";
   } else {
     form.elements.date.value = new Date().toISOString().slice(0, 10);
   }
@@ -330,17 +511,15 @@ form.addEventListener("submit", async (event) => {
     role: data.get("role"),
     status: data.get("status"),
     date: data.get("date"),
-    nextStep: data.get("nextStep")
+    salary: (data.get("salary") || "").trim(),
+    jobUrl: (data.get("jobUrl") || "").trim(),
+    interviewDate: data.get("interviewDate") || "",
+    nextStep: (data.get("nextStep") || "").trim(),
+    notes: (data.get("notes") || "").trim()
   };
 
   if (cloudEnabled && currentUser) {
-    const cloudApplication = {
-      company: updatedApplication.company,
-      role: updatedApplication.role,
-      status: updatedApplication.status,
-      date: updatedApplication.date,
-      next_step: updatedApplication.nextStep
-    };
+    const cloudApplication = localToCloud(updatedApplication);
     const result = editingApplicationId
       ? await supabaseClient.from("applications").update(cloudApplication).eq("id", editingApplicationId).eq("user_id", currentUser.id).select().single()
       : await supabaseClient.from("applications").insert({ ...cloudApplication, user_id: currentUser.id }).select().single();
@@ -349,9 +528,9 @@ form.addEventListener("submit", async (event) => {
       return;
     }
     if (editingApplicationId) {
-      state.applications = state.applications.map((application) => application.id === editingApplicationId ? { ...result.data, nextStep: result.data.next_step || "" } : application);
+      state.applications = state.applications.map((application) => application.id === editingApplicationId ? cloudToLocal(result.data) : application);
     } else {
-      state.applications.push({ ...result.data, nextStep: result.data.next_step || "" });
+      state.applications.push(cloudToLocal(result.data));
     }
   } else {
     if (editingApplicationId) {
@@ -459,8 +638,9 @@ async function changePassword() {
     profilePasswordMessage.textContent = "Enter a new password.";
     return;
   }
-  if (newPassword.length < 6) {
-    profilePasswordMessage.textContent = "New password must be at least 6 characters.";
+  const problem = passwordProblem(newPassword);
+  if (problem) {
+    profilePasswordMessage.textContent = problem;
     return;
   }
   if (!currentPassword) {
@@ -476,11 +656,14 @@ async function changePassword() {
     }
   } else if (currentUser) {
     const storedUser = getLocalUser(currentUser.email);
-    if (storedUser.password !== currentPassword) {
+    const matches = storedUser.hash
+      ? await verifyPassword(currentPassword, storedUser)
+      : storedUser.legacyPassword === currentPassword;
+    if (!matches) {
       profilePasswordMessage.textContent = "Current password is incorrect.";
       return;
     }
-    setLocalUser(currentUser.email, { password: newPassword });
+    setLocalUser(currentUser.email, await makePasswordRecord(newPassword));
   }
 
   document.querySelector("#currentPassword").value = "";
@@ -554,8 +737,9 @@ function setupAuthentication() {
     const credentials = new FormData(authForm);
 
     if (mode === "reset-confirm") {
-      if (credentials.get("password").length < 6) {
-        authMessage.textContent = "Password must be at least 6 characters.";
+      const problem = passwordProblem(credentials.get("password"));
+      if (problem) {
+        authMessage.textContent = problem;
         return;
       }
       const { error } = await supabaseClient.auth.updateUser({ password: credentials.get("password") });
@@ -578,6 +762,14 @@ function setupAuthentication() {
       });
       authMessage.textContent = error ? error.message : "Check your email for a password reset link.";
       return;
+    }
+
+    if (mode === "signup") {
+      const problem = passwordProblem(credentials.get("password"));
+      if (problem) {
+        authMessage.textContent = problem;
+        return;
+      }
     }
 
     const method = mode === "signin"
@@ -696,7 +888,7 @@ function setupLocalAuthentication() {
     render();
   }
 
-  authForm.addEventListener("submit", (event) => {
+  authForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const credentials = new FormData(authForm);
     const fullName = (credentials.get("fullName") || "").trim();
@@ -707,7 +899,7 @@ function setupLocalAuthentication() {
     const storedUser = normalizeStoredUser(users[email], email);
 
     if (mode === "reset") {
-      if (!storedUser.password) {
+      if (!storedUser.hash && !storedUser.legacyPassword) {
         authMessage.textContent = "No local account was found for this email.";
         return;
       }
@@ -717,19 +909,24 @@ function setupLocalAuthentication() {
     }
 
     if (mode === "reset-confirm") {
-      if (password.length < 6) {
-        authMessage.textContent = "Password must be at least 6 characters.";
+      const problem = passwordProblem(password);
+      if (problem) {
+        authMessage.textContent = problem;
         return;
       }
-      setLocalUser(email, { password });
+      users[email] = { ...storedUser, ...(await makePasswordRecord(password)) };
+      delete users[email].legacyPassword;
+      delete users[email].password;
+      saveLocalUsers(users);
       setMode("signin");
       authMessage.textContent = "Password updated. You can now sign in.";
       authForm.reset();
       return;
     }
 
-    if (password.length < 6) {
-      authMessage.textContent = "Password must be at least 6 characters.";
+    const problem = passwordProblem(password);
+    if (problem) {
+      authMessage.textContent = problem;
       return;
     }
 
@@ -739,19 +936,32 @@ function setupLocalAuthentication() {
     }
 
     if (mode === "signin") {
-      if (!storedUser.password || storedUser.password !== password) {
+      const hasHash = Boolean(storedUser.hash);
+      const hasLegacy = Boolean(storedUser.legacyPassword);
+      const matches = hasHash
+        ? await verifyPassword(password, storedUser)
+        : hasLegacy && storedUser.legacyPassword === password;
+      if (!matches) {
         authMessage.textContent = "Email or password is incorrect.";
         return;
+      }
+      // Upgrade legacy plaintext records to salted hashes transparently.
+      if (!hasHash) {
+        users[email] = { ...storedUser, ...(await makePasswordRecord(password)) };
+        delete users[email].legacyPassword;
+        delete users[email].password;
+        saveLocalUsers(users);
       }
     }
 
     if (mode === "signup") {
-      setLocalUser(email, { password, fullName });
+      users[email] = { fullName, ...(await makePasswordRecord(password)) };
+      saveLocalUsers(users);
     }
 
     const userRecord = mode === "signup"
-      ? { email, fullName, password, jobTitle: "", location: "", bio: "" }
-      : { email, ...normalizeStoredUser(getLocalUser(email), email) };
+      ? { email, fullName, jobTitle: "", location: "", bio: "" }
+      : { email, ...getLocalUser(email) };
 
     enterApp(userRecord, mode === "signup");
   });

@@ -24,7 +24,7 @@
       <form id="authForm" class="auth-form">
         <label id="fullNameField" hidden>Full name<input type="text" name="fullName" autocomplete="name" placeholder="Your full name"></label>
         <label>Email<input type="email" name="email" required autocomplete="email" placeholder="you@example.com"></label>
-        <label id="passwordField">Password<input type="password" name="password" required autocomplete="current-password" placeholder="At least 6 characters"></label>
+        <label id="passwordField">Password<input type="password" name="password" required autocomplete="current-password" placeholder="At least 8 characters" minlength="8"></label>
         <button class="primary-button" type="submit" id="authSubmit">Sign in</button>
         <p class="auth-message" id="authMessage" role="status"></p>
       </form>
@@ -92,6 +92,11 @@
             <button class="filter-button" data-filter="Interview">Interview</button>
             <button class="filter-button" data-filter="Offer">Offer</button>
           </div>
+          <div class="data-actions">
+            <button class="secondary-button small-button" id="exportButton" type="button" title="Download your applications as JSON">Export</button>
+            <button class="secondary-button small-button" id="importButton" type="button" title="Import applications from a JSON file">Import</button>
+            <input type="file" id="importFile" accept=".json,application/json" hidden aria-hidden="true">
+          </div>
           <select class="sort-select" id="sortSelect" aria-label="Sort applications"><option value="recent">Most recent</option><option value="company">Company A-Z</option><option value="status">By status</option></select>
         </div>
         <div class="application-table-wrap">
@@ -112,7 +117,11 @@
         <label>Role<input name="role" required placeholder="e.g. Product Designer"></label>
         <label>Status<select name="status"><option>Applied</option><option>Interview</option><option>Offer</option><option>Rejected</option></select></label>
         <label>Date applied<input name="date" type="date" required></label>
+        <label>Salary<input name="salary" placeholder="e.g. $60,000 / ₦350,000"></label>
+        <label>Job URL<input name="jobUrl" type="url" placeholder="https://careers.example.com/role"></label>
+        <label>Interview date<input name="interviewDate" type="date"></label>
         <label class="full-width">Next step<input name="nextStep" placeholder="e.g. Follow up with hiring manager"></label>
+        <label class="full-width">Notes<textarea name="notes" rows="3" placeholder="Contacts, impressions, questions to ask..."></textarea></label>
       </div>
       <div class="modal-actions"><button class="secondary-button" id="cancelApplication" type="button">Cancel</button><button class="primary-button" type="submit">Save application</button></div>
     </form>
@@ -127,7 +136,7 @@
         <label class="full-width">Short bio<textarea name="bio" rows="4" placeholder="Tell us a little about yourself"></textarea></label>
       </div>
       <div class="modal-actions"><button class="secondary-button profile-cancel" type="button">Cancel</button><button class="primary-button" type="submit">Save profile</button></div>
-      <div class="password-section"><p class="eyebrow">Security</p><h3>Change password</h3><div class="password-fields"><label>Current password<input type="password" id="currentPassword" autocomplete="current-password" placeholder="Current password"></label><label>New password<input type="password" id="newPassword" autocomplete="new-password" placeholder="At least 6 characters"></label></div><button class="secondary-button" type="button" id="changePasswordButton">Update password</button><p class="auth-message" id="profilePasswordMessage" role="status"></p></div>
+      <div class="password-section"><p class="eyebrow">Security</p><h3>Change password</h3><div class="password-fields"><label>Current password<input type="password" id="currentPassword" autocomplete="current-password" placeholder="Current password"></label><label>New password<input type="password" id="newPassword" autocomplete="new-password" placeholder="At least 8 characters" minlength="8"></label></div><button class="secondary-button" type="button" id="changePasswordButton">Update password</button><p class="auth-message" id="profilePasswordMessage" role="status"></p></div>
     </form>
   </dialog>
 </body>
