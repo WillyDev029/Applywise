@@ -18,7 +18,7 @@ Applywise is a focused job application tracker built with HTML, CSS, and vanilla
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/RealWilliandro/Applywise.git
+   git clone https://github.com/WillyDev029/Applywise.git
    ```
 
 2. Open the project folder.
